@@ -1,0 +1,10 @@
+# Streamlit Cloud Requirements
+# This is the same as requirements.txt - included for clarity
+
+transformers>=4.33.0
+torch>=2.0.0
+scipy>=1.10.0
+accelerate>=0.20.0
+streamlit>=1.28.0
+pydub>=0.25.1
+
