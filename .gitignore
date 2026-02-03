@@ -1,0 +1,40 @@
+# Environment variables
+.env
+
+# Google Cloud credentials
+*.json
+!sample_dataset.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Audio files (optional - uncomment if you don't want to track audio files)
+# *.wav
+# *.mp3
+# *.m4a
+
+# Audio history directory
+audio_history/
+
+# Generated audio files (don't commit these)
+tajik_audio_output.wav
+test_output.wav
+*.wav
+!sample_dataset.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
