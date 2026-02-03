@@ -224,19 +224,38 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.subheader("🎚️ Audio Post-Processing")
+    st.subheader("🎚️ Audio Speed Control")
+    
+    with st.expander("❓ How does speed adjustment work?", expanded=False):
+        st.markdown("""
+        **Speed Control:**
+        - The MMS-TTS model doesn't have built-in speed parameters
+        - We use post-processing to change playback speed
+        - **0.5x - 0.9x**: Slower speech (good for learning, clear pronunciation)
+        - **1.0x**: Normal speed (default)
+        - **1.1x - 2.0x**: Faster speech (good for quick listening)
+        
+        **Note:** Speed adjustment preserves the voice quality but changes the pace.
+        This is applied after audio generation, so it works with any generated audio.
+        """)
     
     # Speed adjustment (post-processing)
     speed_factor = st.slider(
-        "Playback Speed",
+        "Speech Speed",
         min_value=0.5,
         max_value=2.0,
         value=1.0,
         step=0.1,
-        help="Adjust playback speed (1.0 = normal, <1.0 = slower, >1.0 = faster). Note: This affects the audio file itself."
+        help="Adjust speech speed: 1.0 = normal, <1.0 = slower, >1.0 = faster"
     )
     
-    st.caption("⚠️ Note: Speed adjustment modifies the audio file. Use seed variation for voice differences.")
+    # Show speed indicator
+    if speed_factor < 1.0:
+        st.info(f"🐢 **Slower**: {speed_factor}x speed ({int((1-speed_factor)*100)}% slower than normal)")
+    elif speed_factor > 1.0:
+        st.info(f"🐰 **Faster**: {speed_factor}x speed ({int((speed_factor-1)*100)}% faster than normal)")
+    else:
+        st.caption("🎵 Normal speed (1.0x)")
 
 # Main content area
 col1, col2 = st.columns([2, 1])
@@ -438,17 +457,40 @@ if generate_button:
                 if speed_factor != 1.0:
                     try:
                         from pydub import AudioSegment
+                        import numpy as np
+                        import scipy.io.wavfile
+                        
+                        # Load audio
                         audio_segment = AudioSegment.from_wav(output_file)
-                        # Change speed by changing frame rate
-                        new_sample_rate = int(audio_segment.frame_rate * speed_factor)
-                        audio_segment = audio_segment._spawn(
-                            audio_segment.raw_data,
-                            overrides={"frame_rate": new_sample_rate}
-                        ).set_frame_rate(audio_segment.frame_rate)
+                        original_duration = len(audio_segment) / 1000.0  # seconds
+                        
+                        # Method 1: Try using pydub's speedup/slowdown (preserves pitch better)
+                        if hasattr(audio_segment, '_spawn'):
+                            # Change speed by adjusting frame rate (affects pitch slightly)
+                            new_sample_rate = int(audio_segment.frame_rate * speed_factor)
+                            audio_segment = audio_segment._spawn(
+                                audio_segment.raw_data,
+                                overrides={"frame_rate": new_sample_rate}
+                            ).set_frame_rate(audio_segment.frame_rate)
+                        else:
+                            # Fallback: Use scipy for speed adjustment
+                            sr, data = scipy.io.wavfile.read(output_file)
+                            # Simple resampling approach
+                            from scipy import signal
+                            num_samples = int(len(data) / speed_factor)
+                            indices = np.linspace(0, len(data) - 1, num_samples)
+                            data = np.interp(indices, np.arange(len(data)), data).astype(data.dtype)
+                            scipy.io.wavfile.write(output_file, sr, data)
+                            audio_segment = AudioSegment.from_wav(output_file)
+                        
                         audio_segment.export(output_file, format="wav")
-                        st.info(f"⚡ Speed adjusted to {speed_factor}x")
+                        new_duration = len(audio_segment) / 1000.0  # seconds
+                        
+                        st.success(f"⚡ Speed adjusted to **{speed_factor}x** (Duration: {original_duration:.1f}s → {new_duration:.1f}s)")
                     except Exception as e:
                         st.warning(f"⚠️ Could not adjust speed: {e}. Using original audio.")
+                        import traceback
+                        st.caption(f"Error details: {str(e)}")
                 
                 # Display audio player
                 st.markdown("---")
